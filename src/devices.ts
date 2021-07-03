@@ -1,13 +1,12 @@
-import { CompanionSatelliteClient } from './client'
+import { CompanionSatelliteClientV2 } from './clientv2'
 import { listStreamDecks, openStreamDeck, StreamDeck } from 'elgato-stream-deck'
 import * as usbDetect from 'usb-detection'
 import { ImageWriteQueue } from './writeQueue'
 import sharp = require('sharp')
-import EventEmitter = require('events')
+// import EventEmitter = require('events')
 import { CardGenerator } from './cards'
 
 type SerialNumber = string
-type DeviceId = number
 
 interface StreamDeckExt {
 	deck: StreamDeck
@@ -17,16 +16,14 @@ interface StreamDeckExt {
 
 export class DeviceManager {
 	private readonly devices: Map<SerialNumber, StreamDeckExt>
-	private readonly deviceIdMap: Map<DeviceId, SerialNumber>
-	private readonly client: CompanionSatelliteClient
+	private readonly client: CompanionSatelliteClientV2
 	private readonly cardGenerator: CardGenerator
 
 	private statusString: string
 
-	constructor(client: CompanionSatelliteClient) {
+	constructor(client: CompanionSatelliteClientV2) {
 		this.client = client
 		this.devices = new Map()
-		this.deviceIdMap = new Map()
 		this.cardGenerator = new CardGenerator()
 
 		usbDetect.startMonitoring()
@@ -39,7 +36,7 @@ export class DeviceManager {
 
 		client.on('connected', () => {
 			console.log('connected')
-			this.clearIdMap()
+			// this.clearIdMap()
 
 			this.showStatusCard('Connected')
 
@@ -47,7 +44,7 @@ export class DeviceManager {
 		})
 		client.on('disconnected', () => {
 			console.log('disconnected')
-			this.clearIdMap()
+			// this.clearIdMap()
 
 			this.showStatusCard('Disconnected')
 		})
@@ -59,6 +56,14 @@ export class DeviceManager {
 			try {
 				const dev = this.getDeviceInfo(d.deviceId)[1]
 				dev.deck.setBrightness(d.percent)
+			} catch (e) {
+				console.error(`Set brightness: ${e}`)
+			}
+		})
+		client.on('clearDeck', (d) => {
+			try {
+				const dev = this.getDeviceInfo(d.deviceId)[1]
+				dev.deck.clearAllKeys()
 			} catch (e) {
 				console.error(`Set brightness: ${e}`)
 			}
@@ -77,23 +82,11 @@ export class DeviceManager {
 		})
 		client.on('newDevice', (d) => {
 			try {
-				if (!this.deviceIdMap.has(d.deviceId)) {
-					const ind = d.serialNumber.indexOf('\u0000')
-					const serial2 = ind >= 0 ? d.serialNumber.substring(0, ind) : d.serialNumber
-					console.log(`${d.serialNumber}=${d.serialNumber.length}`)
-					console.log(`${serial2}=${serial2.length}`)
-					const dev = this.devices.get(serial2)
-					if (dev) {
-						dev.queueOutputId++
-						this.deviceIdMap.set(d.deviceId, serial2)
-						console.log('Registering key evenrs for ' + d.deviceId)
-						dev.deck.on('down', (key) => this.client.keyDown(d.deviceId, key))
-						dev.deck.on('up', (key) => this.client.keyUp(d.deviceId, key))
-					} else {
-						throw new Error(`Device missing: ${d.serialNumber}`)
-					}
+				const dev = this.devices.get(d.deviceId)
+				if (dev) {
+					dev.queueOutputId++
 				} else {
-					throw new Error(`Device already mapped: ${d.deviceId}`)
+					throw new Error(`Device missing: ${d.deviceId}`)
 				}
 			} catch (e) {
 				console.error(`Setup device: ${e}`)
@@ -113,23 +106,19 @@ export class DeviceManager {
 		}
 	}
 
-	private clearIdMap(): void {
-		console.log('clear id map')
-		for (const dev of this.devices.values()) {
-			const deck = (dev.deck as unknown) as EventEmitter
-			deck.removeAllListeners('down')
-			deck.removeAllListeners('up')
-		}
-		this.deviceIdMap.clear()
-	}
+	// private clearIdMap(): void {
+	// 	console.log('clear id map')
+	// 	for (const dev of this.devices.values()) {
+	// 		const deck = (dev.deck as unknown) as EventEmitter
+	// 		deck.removeAllListeners('down')
+	// 		deck.removeAllListeners('up')
+	// 	}
+	// }
 
-	private getDeviceInfo(deviceId: number): [string, StreamDeckExt] {
-		const serial = this.deviceIdMap.get(deviceId)
-		if (!serial) throw new Error(`Unknown deviceId: ${deviceId}`)
-
-		const sd = this.devices.get(serial)
-		if (!sd) throw new Error(`Missing device for serial: "${serial}"`)
-		return [serial, sd]
+	private getDeviceInfo(deviceId: string): [string, StreamDeckExt] {
+		const sd = this.devices.get(deviceId)
+		if (!sd) throw new Error(`Missing device for serial: "${deviceId}"`)
+		return [deviceId, sd]
 	}
 
 	private foundDevice(dev: usbDetect.Device): void {
@@ -147,11 +136,7 @@ export class DeviceManager {
 		if (dev2) {
 			// cleanup
 			this.devices.delete(dev.serialNumber)
-			const k = Array.from(this.deviceIdMap.entries()).find((e) => e[1] === dev.serialNumber)
-			if (k) {
-				this.deviceIdMap.delete(k[0])
-				this.client.removeDevice(k[0])
-			}
+			this.client.removeDevice(dev.serialNumber)
 
 			dev2.queue?.abort()
 			try {
@@ -163,16 +148,15 @@ export class DeviceManager {
 	}
 
 	public registerAll(): void {
-		const devices2 = Array.from(this.deviceIdMap.entries())
 		for (const [serial, device] of this.devices.entries()) {
 			// If it is already in the process of initialising, core will give us back the same id twice, so we dont need to track it
-			if (!devices2.find((d) => d[1] === serial)) {
-				// Re-init device
-				this.client.addDevice(serial, device.deck.NUM_KEYS, device.deck.KEY_COLUMNS)
+			// if (!devices2.find((d) => d[1] === serial)) { // TODO - do something here?
+			// Re-init device
+			this.client.addDevice(serial, device.deck.NUM_KEYS, device.deck.KEY_COLUMNS)
 
-				// Indicate on device
-				this.deckDrawStatus(device, this.statusString)
-			}
+			// Indicate on device
+			this.deckDrawStatus(device, this.statusString)
+			// }
 		}
 
 		this.scanDevices()
@@ -229,6 +213,10 @@ export class DeviceManager {
 
 				this.devices.set(serial, devInfo)
 				this.client.addDevice(serial, sd.NUM_KEYS, sd.KEY_COLUMNS)
+
+				console.log('Registering key events for ' + serial)
+				sd.on('down', (key) => this.client.keyDown(serial, key))
+				sd.on('up', (key) => this.client.keyUp(serial, key))
 
 				sd.on('error', (e) => {
 					console.error('device error', e)

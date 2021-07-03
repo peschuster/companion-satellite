@@ -1,6 +1,6 @@
 import exitHook = require('exit-hook')
 import * as meow from 'meow'
-import { CompanionSatelliteClient } from './client'
+import { CompanionSatelliteClientV2 } from './clientv2'
 import { DeviceManager } from './devices'
 
 const cli = meow(
@@ -20,7 +20,7 @@ if (cli.input.length === 0) {
 
 console.log('Starting')
 
-const client = new CompanionSatelliteClient({ debug: true })
+const client = new CompanionSatelliteClientV2({ debug: true })
 const devices = new DeviceManager(client)
 
 client.on('log', (l) => console.log(l))
