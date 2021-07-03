@@ -52,7 +52,7 @@ export type CompanionSatelliteClientEvents = {
 	clearDeck: [{ deviceId: string }]
 }
 
-export class CompanionSatelliteClientV2 extends EventEmitter<CompanionSatelliteClientEvents> {
+export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteClientEvents> {
 	private readonly debug: boolean
 	private socket: Socket | undefined
 

@@ -1,4 +1,4 @@
-import { CompanionSatelliteClientV2 } from './clientv2'
+import { CompanionSatelliteClient } from './client'
 import { listStreamDecks, openStreamDeck, StreamDeck } from 'elgato-stream-deck'
 import * as usbDetect from 'usb-detection'
 import { ImageWriteQueue } from './writeQueue'
@@ -16,12 +16,12 @@ interface StreamDeckExt {
 
 export class DeviceManager {
 	private readonly devices: Map<SerialNumber, StreamDeckExt>
-	private readonly client: CompanionSatelliteClientV2
+	private readonly client: CompanionSatelliteClient
 	private readonly cardGenerator: CardGenerator
 
 	private statusString: string
 
-	constructor(client: CompanionSatelliteClientV2) {
+	constructor(client: CompanionSatelliteClient) {
 		this.client = client
 		this.devices = new Map()
 		this.cardGenerator = new CardGenerator()
@@ -36,7 +36,6 @@ export class DeviceManager {
 
 		client.on('connected', () => {
 			console.log('connected')
-			// this.clearIdMap()
 
 			this.showStatusCard('Connected')
 
@@ -44,7 +43,6 @@ export class DeviceManager {
 		})
 		client.on('disconnected', () => {
 			console.log('disconnected')
-			// this.clearIdMap()
 
 			this.showStatusCard('Disconnected')
 		})
@@ -105,15 +103,6 @@ export class DeviceManager {
 			}
 		}
 	}
-
-	// private clearIdMap(): void {
-	// 	console.log('clear id map')
-	// 	for (const dev of this.devices.values()) {
-	// 		const deck = (dev.deck as unknown) as EventEmitter
-	// 		deck.removeAllListeners('down')
-	// 		deck.removeAllListeners('up')
-	// 	}
-	// }
 
 	private getDeviceInfo(deviceId: string): [string, StreamDeckExt] {
 		const sd = this.devices.get(deviceId)
