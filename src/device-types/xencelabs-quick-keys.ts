@@ -3,10 +3,13 @@ import {
 	XencelabsQuickKeysDisplayBrightness,
 	XencelabsQuickKeysWheelSpeed,
 	XencelabsQuickKeysDisplayOrientation,
+	WheelEvent,
 } from '@xencelabs-quick-keys/node'
-import { WrappedDevice, DeviceRegisterProps, DeviceDrawProps } from './api'
+import EventEmitter = require('eventemitter3')
+import { CompanionSatelliteClient } from '../client'
+import { WrappedDevice, DeviceRegisterProps, DeviceDrawProps, WrappedDeviceEvents } from './api'
 
-export class QuickKeysWrapper implements WrappedDevice {
+export class QuickKeysWrapper extends EventEmitter<WrappedDeviceEvents> implements WrappedDevice {
 	readonly #surface: XencelabsQuickKeys
 	readonly #deviceId: string
 
@@ -18,10 +21,18 @@ export class QuickKeysWrapper implements WrappedDevice {
 	public get productName(): string {
 		return 'Xencelabs Quick Keys'
 	}
+	public get ready(): boolean {
+		return true // TODO
+	}
 
 	public constructor(deviceId: string, surface: XencelabsQuickKeys) {
+		super()
+
 		this.#surface = surface
 		this.#deviceId = deviceId
+
+		surface.on('connected', () => this.emit('ready', true))
+		surface.on('disconnected', () => this.emit('ready', false))
 	}
 
 	getRegisterProps(): DeviceRegisterProps {
@@ -38,6 +49,49 @@ export class QuickKeysWrapper implements WrappedDevice {
 
 		await this.#surface.close()
 	}
+	async initDevice(client: CompanionSatelliteClient, status: string): Promise<void> {
+		console.log('Registering key events for ' + this.deviceId)
+
+		const keyToCompanion = (k: number) => {
+			if (k >= 0 && k < 4) return k + 1
+			if (k >= 4 && k < 8) return k + 3
+			if (k === 8) return 0
+			if (k === 9) return 5
+			return null
+		}
+		this.#surface.on('down', (key) => {
+			const k = keyToCompanion(key)
+			if (k !== null) {
+				client.keyDown(this.deviceId, k)
+			}
+		})
+		this.#surface.on('up', (key) => {
+			const k = keyToCompanion(key)
+			if (k !== null) {
+				client.keyUp(this.deviceId, k)
+			}
+		})
+		this.#surface.on('wheel', (ev) => {
+			switch (ev) {
+				case WheelEvent.Left:
+					client.keyUp(this.deviceId, 11)
+					break
+				case WheelEvent.Right:
+					client.keyDown(this.deviceId, 11)
+					break
+			}
+		})
+
+		await this.#surface.setWheelSpeed(XencelabsQuickKeysWheelSpeed.Normal) // TODO dynamic
+		await this.#surface.setDisplayOrientation(XencelabsQuickKeysDisplayOrientation.Rotate0) // TODO dynamic
+		await this.#surface.setSleepTimeout(0) // TODO dynamic
+
+		// Start with blanking it
+		await this.blankDevice()
+
+		await this.showStatus(client.host, status)
+	}
+
 	async deviceAdded(): Promise<void> {
 		this.clearStatus()
 	}
@@ -55,9 +109,6 @@ export class QuickKeysWrapper implements WrappedDevice {
 		await this.clearStatus()
 
 		// Do some initial setup too
-		await this.#surface.setWheelSpeed(XencelabsQuickKeysWheelSpeed.Normal) // TODO dynamic
-		await this.#surface.setDisplayOrientation(XencelabsQuickKeysDisplayOrientation.Rotate0) // TODO dynamic
-		await this.#surface.setSleepTimeout(0) // TODO dynamic
 
 		await this.#surface.setWheelColor(0, 0, 0)
 

@@ -1,3 +1,6 @@
+import EventEmitter = require('eventemitter3')
+import { CompanionSatelliteClient } from '../client'
+
 export type DeviceId = string
 
 export interface DeviceDrawProps {
@@ -15,13 +18,20 @@ export interface DeviceRegisterProps {
 	text: boolean
 }
 
-export interface WrappedDevice {
+export type WrappedDeviceEvents = {
+	ready: [ready: boolean]
+}
+
+export interface WrappedDevice extends EventEmitter<WrappedDeviceEvents> {
 	readonly deviceId: DeviceId
 	readonly productName: string
+	readonly ready: boolean
 
 	getRegisterProps(): DeviceRegisterProps
 
 	close(): Promise<void>
+
+	initDevice(client: CompanionSatelliteClient, status: string): Promise<void>
 
 	deviceAdded(): Promise<void>
 

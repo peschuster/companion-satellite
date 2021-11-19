@@ -1,9 +1,9 @@
 import { CompanionSatelliteClient } from './client'
-import { listStreamDecks, openStreamDeck } from 'elgato-stream-deck'
+import { listStreamDecks, openStreamDeck, StreamDeck } from 'elgato-stream-deck'
 import * as usbDetect from 'usb-detection'
 // import EventEmitter = require('events')
 import { CardGenerator } from './cards'
-import { listXencelabsQuickKeys, openXencelabsQuickKeys, WheelEvent } from '@xencelabs-quick-keys/node'
+import { listXencelabsQuickKeys, openXencelabsQuickKeys, XencelabsQuickKeys } from '@xencelabs-quick-keys/node'
 import { DeviceId, WrappedDevice } from './device-types/api'
 import { StreamDeckWrapper } from './device-types/streamdeck'
 import { QuickKeysWrapper } from './device-types/xencelabs-quick-keys'
@@ -108,8 +108,9 @@ export class DeviceManager {
 
 	private removeDevice(dev: usbDetect.Device): void {
 		console.log('Lost a device', dev)
-		const dev2 = this.devices.get(dev.serialNumber)
+		let dev2 = this.devices.get(dev.serialNumber)
 		// TODO - this won't work for quickkeys, and is brittle for streamdecks..
+
 		if (dev2) {
 			// cleanup
 			this.devices.delete(dev.serialNumber)
@@ -130,7 +131,9 @@ export class DeviceManager {
 			device.showStatus(this.client.host, this.statusString)
 
 			// Re-init device
-			this.client.addDevice(device.deviceId, device.productName, device.getRegisterProps())
+			if (device.ready) {
+				this.client.addDevice(device.deviceId, device.productName, device.getRegisterProps())
+			}
 
 			// }
 		}
@@ -149,32 +152,24 @@ export class DeviceManager {
 		}
 	}
 
-	private tryAddStreamdeck(path: string, serial: string) {
-		if (!this.devices.has(serial)) {
-			console.log(`adding new device: ${path}`)
-			console.log(`existing = ${JSON.stringify(Array.from(this.devices.keys()))}`)
+	private async tryAddStreamdeck(path: string, serial: string) {
+		let sd: StreamDeck | undefined
+		try {
+			if (!this.devices.has(serial)) {
+				console.log(`adding new device: ${path}`)
+				console.log(`existing = ${JSON.stringify(Array.from(this.devices.keys()))}`)
 
-			try {
-				const sd = openStreamDeck(path, { resetToLogoOnExit: true })
-				const serial = sd.getSerialNumber()
-
-				const devInfo = new StreamDeckWrapper(serial, sd, this.cardGenerator)
-
-				this.showNewDevice(devInfo)
-
-				this.devices.set(serial, devInfo)
-				this.client.addDevice(serial, devInfo.productName, devInfo.getRegisterProps())
-
-				console.log('Registering key events for ' + serial)
-				sd.on('down', (key) => this.client.keyDown(serial, key))
-				sd.on('up', (key) => this.client.keyUp(serial, key))
-
+				sd = openStreamDeck(path, { resetToLogoOnExit: true })
 				sd.on('error', (e) => {
 					console.error('device error', e)
 				})
-			} catch (e) {
-				console.log(`Open "${path}" failed: ${e}`)
+
+				const devInfo = new StreamDeckWrapper(serial, sd, this.cardGenerator)
+				await this.tryAddDeviceInner(serial, devInfo)
 			}
+		} catch (e) {
+			console.log(`Open "${path}" failed: ${e}`)
+			if (sd) sd.close() //.catch((e) => null)
 		}
 	}
 
@@ -189,66 +184,36 @@ export class DeviceManager {
 	}
 
 	private async tryAddQuickKeys(path: string) {
+		let surface: XencelabsQuickKeys | undefined
 		try {
 			const deviceId = this.getAutoId(path, 'xencelabs-quick-keys')
 			if (!this.devices.has(deviceId)) {
 				console.log(`adding new device: ${deviceId}`)
 				console.log(`existing = ${JSON.stringify(Array.from(this.devices.keys()))}`)
 
-				const surface = await openXencelabsQuickKeys(path)
-				const devInfo = new QuickKeysWrapper(deviceId, surface)
-
-				this.showNewDevice(devInfo)
-
-				this.devices.set(deviceId, devInfo)
-				this.client.addDevice(deviceId, devInfo.productName, devInfo.getRegisterProps())
-
-				console.log('Registering key events for ' + deviceId)
-
-				const keyToCompanion = (k: number) => {
-					if (k >= 0 && k < 4) return k + 1
-					if (k >= 4 && k < 8) return k + 3
-					if (k === 8) return 0
-					if (k === 9) return 5
-					return null
-				}
-				surface.on('down', (key) => {
-					const k = keyToCompanion(key)
-					if (k !== null) {
-						this.client.keyDown(deviceId, k)
-					}
-				})
-				surface.on('up', (key) => {
-					const k = keyToCompanion(key)
-					if (k !== null) {
-						this.client.keyUp(deviceId, k)
-					}
-				})
-				surface.on('wheel', (ev) => {
-					switch (ev) {
-						case WheelEvent.Left:
-							this.client.keyUp(deviceId, 11)
-							break
-						case WheelEvent.Right:
-							this.client.keyDown(deviceId, 11)
-							break
-					}
-				})
-
+				// TODO - this is race prone..
+				surface = await openXencelabsQuickKeys(path)
 				surface.on('error', (e) => {
 					console.error('device error', e)
 				})
+
+				const devInfo = new QuickKeysWrapper(deviceId, surface)
+				await this.tryAddDeviceInner(deviceId, devInfo)
 			}
 		} catch (e) {
 			console.log(`Open "${path}" failed: ${e}`)
+			if (surface) surface.close().catch((e) => null)
 		}
 	}
 
-	private async showNewDevice(dev: WrappedDevice): Promise<void> {
-		// Start with blanking it
-		await dev.blankDevice()
+	private async tryAddDeviceInner(deviceId: string, devInfo: WrappedDevice): Promise<void> {
+		await devInfo.initDevice(this.client, this.statusString)
 
-		await dev.showStatus(this.client.host, this.statusString)
+		this.devices.set(deviceId, devInfo)
+
+		if (devInfo.ready) {
+			this.client.addDevice(deviceId, devInfo.productName, devInfo.getRegisterProps())
+		}
 	}
 
 	private showStatusCard(status?: string): void {
