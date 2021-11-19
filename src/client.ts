@@ -223,8 +223,8 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 				// console.log('Got pong')
 				this._pingUnackedCount = 0
 				break
-			case 'KEY-DRAW':
-				this.handleDraw(params)
+			case 'KEY-STATE':
+				this.handleState(params)
 				break
 			case 'KEYS-CLEAR':
 				this.handleClear(params)
@@ -241,7 +241,7 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 		}
 	}
 
-	private handleDraw(params: Record<string, string | boolean>): void {
+	private handleState(params: Record<string, string | boolean>): void {
 		if (typeof params.DEVICEID !== 'string') {
 			console.log('Mising DEVICEID in KEY-DRAW response')
 			return
@@ -250,8 +250,8 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 			console.log('Mising KEY in KEY-DRAW response')
 			return
 		}
-		if (typeof params.DATA !== 'string') {
-			console.log('Mising DATA in KEY-DRAW response')
+		if (typeof params.BITMAP !== 'string') {
+			console.log('Mising BITMAP in KEY-DRAW response')
 			return
 		}
 
@@ -261,7 +261,7 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 			return
 		}
 
-		const image = Buffer.from(params.DATA, 'base64')
+		const image = Buffer.from(params.BITMAP, 'base64')
 
 		this.emit('draw', { deviceId: params.DEVICEID, keyIndex, image })
 	}
