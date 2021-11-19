@@ -1,5 +1,6 @@
 import { EventEmitter } from 'eventemitter3'
 import { Socket } from 'net'
+import { DeviceDrawProps, DeviceRegisterProps } from './device-types/api'
 
 const SERVER_PORT = 16622
 const PING_UNACKED_LIMIT = 5 // Arbitrary number
@@ -39,21 +40,6 @@ export interface CompanionSatelliteClientOptions {
 	debug?: boolean
 }
 
-export interface ClientDrawProps {
-	deviceId: string
-	keyIndex: number
-	image?: Buffer
-	color?: string // hex
-	text?: string
-}
-export interface DeviceRegisterProps {
-	keysTotal: number
-	keysPerRow: number
-	bitmaps: boolean
-	colours: boolean
-	text: boolean
-}
-
 export type CompanionSatelliteClientEvents = {
 	error: [Error]
 	log: [string]
@@ -61,7 +47,7 @@ export type CompanionSatelliteClientEvents = {
 	disconnected: []
 	ipChange: [string]
 
-	draw: [ClientDrawProps]
+	draw: [DeviceDrawProps]
 	brightness: [{ deviceId: string; percent: number }]
 	newDevice: [{ deviceId: string }]
 	clearDeck: [{ deviceId: string }]
