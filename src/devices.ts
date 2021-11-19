@@ -202,7 +202,7 @@ export class DeviceManager {
 			}
 		} catch (e) {
 			console.log(`Open "${path}" failed: ${e}`)
-			if (surface) surface.close().catch((e) => null)
+			if (surface) surface.close().catch(() => null)
 		}
 	}
 
@@ -214,6 +214,14 @@ export class DeviceManager {
 		if (devInfo.ready) {
 			this.client.addDevice(deviceId, devInfo.productName, devInfo.getRegisterProps())
 		}
+
+		devInfo.on('ready', (ready) => {
+			if (ready) {
+				this.client.addDevice(deviceId, devInfo.productName, devInfo.getRegisterProps())
+			} else {
+				this.client.removeDevice(deviceId)
+			}
+		})
 	}
 
 	private showStatusCard(status?: string): void {
