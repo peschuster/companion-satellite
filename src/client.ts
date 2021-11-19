@@ -328,10 +328,10 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 		}
 	}
 
-	public addDevice(deviceId: string, props: DeviceRegisterProps): void {
+	public addDevice(deviceId: string, productName: string, props: DeviceRegisterProps): void {
 		if (this._connected && this.socket) {
 			this.socket.write(
-				`ADD-DEVICE DEVICEID=${deviceId} PRODUCT_NAME="Satellite Deck" KEYS_TOTAL=${
+				`ADD-DEVICE DEVICEID=${deviceId} PRODUCT_NAME="${productName}" KEYS_TOTAL=${
 					props.keysTotal
 				} KEYS_PER_ROW=${props.keysPerRow} BITMAPS=${props.bitmaps ? 1 : 0} COLORS=${
 					props.colours ? 1 : 0

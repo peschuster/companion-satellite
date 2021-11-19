@@ -19,6 +19,7 @@ type DeviceId = string
 
 interface WrappedDevice {
 	readonly deviceId: DeviceId
+	readonly productName: string
 
 	getRegisterProps(): DeviceRegisterProps
 
@@ -45,6 +46,9 @@ class StreamDeckWrapper implements WrappedDevice {
 
 	public get deviceId(): string {
 		return this.#deviceId
+	}
+	public get productName(): string {
+		return `Satellite StreamDeck: ${this.#deck.MODEL}`
 	}
 
 	public constructor(deviceId: string, deck: StreamDeck, cardGenerator: CardGenerator) {
@@ -143,6 +147,9 @@ class QuickKeysWrapper implements WrappedDevice {
 	public get deviceId(): string {
 		return this.#deviceId
 	}
+	public get productName(): string {
+		return 'Xencelabs Quick Keys'
+	}
 
 	public constructor(deviceId: string, surface: XencelabsQuickKeys) {
 		this.#surface = surface
@@ -164,7 +171,7 @@ class QuickKeysWrapper implements WrappedDevice {
 		await this.#surface.close()
 	}
 	async deviceAdded(): Promise<void> {
-		// Nothing to do
+		this.clearStatus()
 	}
 	async setBrightness(percent: number): Promise<void> {
 		const opts = Object.values(XencelabsQuickKeysDisplayBrightness).filter(
@@ -214,12 +221,14 @@ class QuickKeysWrapper implements WrappedDevice {
 		this.stopStatusInterval()
 
 		const newMessage = status
-		await this.#surface.showOverlayText(5, newMessage)
 		this.#statusTimer = setInterval(() => {
+			// Update on an interval, as we cant set it unlimited
 			this.#surface.showOverlayText(5, newMessage).catch((e) => {
 				console.error(`Overlay failed: ${e}`)
 			})
 		}, 3000)
+
+		await this.#surface.showOverlayText(5, newMessage)
 	}
 
 	private stopStatusInterval(): boolean {
@@ -356,11 +365,13 @@ export class DeviceManager {
 		for (const [_, device] of this.devices.entries()) {
 			// If it is already in the process of initialising, core will give us back the same id twice, so we dont need to track it
 			// if (!devices2.find((d) => d[1] === serial)) { // TODO - do something here?
-			// Re-init device
-			this.client.addDevice(device.deviceId, device.getRegisterProps())
 
 			// Indicate on device
 			device.showStatus(this.client.host, this.statusString)
+
+			// Re-init device
+			this.client.addDevice(device.deviceId, device.productName, device.getRegisterProps())
+
 			// }
 		}
 
@@ -392,7 +403,7 @@ export class DeviceManager {
 				this.showNewDevice(devInfo)
 
 				this.devices.set(serial, devInfo)
-				this.client.addDevice(serial, devInfo.getRegisterProps())
+				this.client.addDevice(serial, devInfo.productName, devInfo.getRegisterProps())
 
 				console.log('Registering key events for ' + serial)
 				sd.on('down', (key) => this.client.keyDown(serial, key))
@@ -430,7 +441,7 @@ export class DeviceManager {
 				this.showNewDevice(devInfo)
 
 				this.devices.set(deviceId, devInfo)
-				this.client.addDevice(deviceId, devInfo.getRegisterProps())
+				this.client.addDevice(deviceId, devInfo.productName, devInfo.getRegisterProps())
 
 				console.log('Registering key events for ' + deviceId)
 
