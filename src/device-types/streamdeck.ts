@@ -1,4 +1,4 @@
-import { StreamDeck } from 'elgato-stream-deck'
+import { StreamDeck } from '@elgato-stream-deck/node'
 import { EventEmitter } from 'eventemitter3'
 import sharp = require('sharp')
 import { CompanionSatelliteClient } from '../client'
@@ -50,7 +50,7 @@ export class StreamDeckWrapper extends EventEmitter<WrappedDeviceEvents> impleme
 				// Check if generated image is still valid
 				if (this.#queueOutputId === outputId) {
 					try {
-						this.#deck.fillImage(key, newbuffer)
+						await this.#deck.fillKeyBuffer(key, newbuffer)
 					} catch (e_1) {
 						console.error(`device(${deviceId}): fillImage failed: ${e_1}`)
 					}
@@ -91,14 +91,14 @@ export class StreamDeckWrapper extends EventEmitter<WrappedDeviceEvents> impleme
 		this.#deck.setBrightness(percent)
 	}
 	async blankDevice(): Promise<void> {
-		this.#deck.clearAllKeys()
+		await this.#deck.clearPanel()
 	}
 	async draw(d: DeviceDrawProps): Promise<void> {
 		if (d.image) {
 			if (this.#queue) {
 				this.#queue.queue(d.keyIndex, d.image)
 			} else {
-				this.#deck.fillImage(d.keyIndex, d.image)
+				await this.#deck.fillKeyBuffer(d.keyIndex, d.image)
 			}
 		} else {
 			throw new Error(`Cannot draw for Streamdeck without image`)
@@ -112,10 +112,10 @@ export class StreamDeckWrapper extends EventEmitter<WrappedDeviceEvents> impleme
 		const outputId = this.#queueOutputId
 		this.#cardGenerator
 			.generateBasicCard(this.#deck, hostname, status)
-			.then((buffer) => {
+			.then(async (buffer) => {
 				if (outputId === this.#queueOutputId) {
 					// still valid
-					this.#deck.fillPanel(buffer, { format: 'rgba' })
+					await this.#deck.fillPanelBuffer(buffer, { format: 'rgba' })
 				}
 			})
 			.catch((e) => {

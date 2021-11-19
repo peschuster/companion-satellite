@@ -1,5 +1,5 @@
 import { CompanionSatelliteClient } from './client'
-import { listStreamDecks, openStreamDeck, StreamDeck } from 'elgato-stream-deck'
+import { listStreamDecks, openStreamDeck, StreamDeck } from '@elgato-stream-deck/node'
 import * as usbDetect from 'usb-detection'
 // import EventEmitter = require('events')
 import { CardGenerator } from './cards'
@@ -159,7 +159,7 @@ export class DeviceManager {
 				console.log(`adding new device: ${path}`)
 				console.log(`existing = ${JSON.stringify(Array.from(this.devices.keys()))}`)
 
-				sd = openStreamDeck(path, { resetToLogoOnExit: true })
+				sd = openStreamDeck(path)
 				sd.on('error', (e) => {
 					console.error('device error', e)
 				})

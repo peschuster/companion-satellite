@@ -44,12 +44,12 @@
     "node": "^12.16 || 14"
   },
   "dependencies": {
+    "@elgato-stream-deck/node": "^5.1.1",
     "@julusian/jpeg-turbo": "^1.1.1",
     "@xencelabs-quick-keys/node": "^0.3.0",
     "electron-about-window": "^1.14.0",
     "electron-prompt": "^1.6.2",
     "electron-store": "^6.0.1",
-    "elgato-stream-deck": "^4.1.0",
     "eventemitter3": "^4.0.7",
     "exit-hook": "^2.2.1",
     "meow": "^9.0.0",

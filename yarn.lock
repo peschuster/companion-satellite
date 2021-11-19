@@ -59,6 +59,22 @@
     global-agent "^2.0.2"
     global-tunnel-ng "^2.7.1"
 
+"@elgato-stream-deck/core@5.1.1":
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/@elgato-stream-deck/core/-/core-5.1.1.tgz#c2a5c9525485ebafe17255c34dd2e454c181f817"
+  integrity sha512-rj2UJThlPSdhY4V87UsxEM81Jte8WQGDJWnOt38VyI6waMZdiqgvzll6Ww9w93f6IFxIKVvPcKOUgCm+qRDofA==
+  dependencies:
+    eventemitter3 "^4.0.7"
+
+"@elgato-stream-deck/node@^5.1.1":
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/@elgato-stream-deck/node/-/node-5.1.1.tgz#8ab855c6afee382042e69c4a50415588d44891c6"
+  integrity sha512-zaAQWsZhVae/1kP/BK0iscyJ+3wweaNwm8APh1b7r9NyuMMtsDiRYHYcsaUjTnSOAwrnxogzUe0daS0BjmKJ4A==
+  dependencies:
+    "@elgato-stream-deck/core" "5.1.1"
+    jpeg-js "^0.4.2"
+    node-hid "^2.1.1"
+
 "@eslint/eslintrc@^0.4.3":
   version "0.4.3"
   resolved "https://registry.yarnpkg.com/@eslint/eslintrc/-/eslintrc-0.4.3.tgz#9e42981ef035beb3dd49add17acb96e8ff6f394c"
@@ -1514,15 +1530,6 @@ electron@latest:
     "@types/node" "^14.6.2"
     extract-zip "^1.0.3"
 
-elgato-stream-deck@^4.1.0:
-  version "4.1.0"
-  resolved "https://registry.yarnpkg.com/elgato-stream-deck/-/elgato-stream-deck-4.1.0.tgz#2a6cdac09faa39cb450cf87ec2f0a73c13d823b7"
-  integrity sha512-TH9oBJTxs32QpK/XzjGWV82OFYf8+A3Yb/DGLQEzpJDvTdCfcpl3vtBchJ+n76x7GqlSFaHqLtJlIc4HzOmUvw==
-  dependencies:
-    exit-hook "^2.2.0"
-    jpeg-js "^0.4.2"
-    node-hid "^2.1.1"
-
 emoji-regex@^7.0.1:
   version "7.0.3"
   resolved "https://registry.yarnpkg.com/emoji-regex/-/emoji-regex-7.0.3.tgz#933a04052860c85e83c122479c4748a8e4c72156"
@@ -1779,7 +1786,7 @@ execa@^5.0.0:
     signal-exit "^3.0.3"
     strip-final-newline "^2.0.0"
 
-exit-hook@^2.2.0, exit-hook@^2.2.1:
+exit-hook@^2.2.1:
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/exit-hook/-/exit-hook-2.2.1.tgz#007b2d92c6428eda2b76e7016a34351586934593"
   integrity sha512-eNTPlAD67BmP31LDINZ3U7HSF8l57TxOY2PmBJ1shpCvpnxBF93mWCE8YHBnXs8qiUZJc9WDcWIeC3a2HIAMfw==
