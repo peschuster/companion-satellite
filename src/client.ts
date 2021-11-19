@@ -39,6 +39,21 @@ export interface CompanionSatelliteClientOptions {
 	debug?: boolean
 }
 
+export interface ClientDrawProps {
+	deviceId: string
+	keyIndex: number
+	image?: Buffer
+	color?: string // hex
+	text?: string
+}
+export interface DeviceRegisterProps {
+	keysTotal: number
+	keysPerRow: number
+	bitmaps: boolean
+	colours: boolean
+	text: boolean
+}
+
 export type CompanionSatelliteClientEvents = {
 	error: [Error]
 	log: [string]
@@ -46,7 +61,7 @@ export type CompanionSatelliteClientEvents = {
 	disconnected: []
 	ipChange: [string]
 
-	draw: [{ deviceId: string; keyIndex: number; image: Buffer }]
+	draw: [ClientDrawProps]
 	brightness: [{ deviceId: string; percent: number }]
 	newDevice: [{ deviceId: string }]
 	clearDeck: [{ deviceId: string }]
@@ -250,10 +265,6 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 			console.log('Mising KEY in KEY-DRAW response')
 			return
 		}
-		if (typeof params.BITMAP !== 'string') {
-			console.log('Mising BITMAP in KEY-DRAW response')
-			return
-		}
 
 		const keyIndex = parseInt(params.KEY)
 		if (isNaN(keyIndex)) {
@@ -261,9 +272,11 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 			return
 		}
 
-		const image = Buffer.from(params.BITMAP, 'base64')
+		const image = typeof params.BITMAP === 'string' ? Buffer.from(params.BITMAP, 'base64') : undefined
+		const text = typeof params.TEXT === 'string' ? Buffer.from(params.TEXT, 'base64').toString() : undefined
+		const color = typeof params.COLOR === 'string' ? params.COLOR : undefined
 
-		this.emit('draw', { deviceId: params.DEVICEID, keyIndex, image })
+		this.emit('draw', { deviceId: params.DEVICEID, keyIndex, image, text, color })
 	}
 	private handleClear(params: Record<string, string | boolean>): void {
 		if (typeof params.DEVICEID !== 'string') {
@@ -315,10 +328,14 @@ export class CompanionSatelliteClient extends EventEmitter<CompanionSatelliteCli
 		}
 	}
 
-	public addDevice(deviceId: string, keysTotal: number, keysPerRow: number): void {
+	public addDevice(deviceId: string, props: DeviceRegisterProps): void {
 		if (this._connected && this.socket) {
 			this.socket.write(
-				`ADD-DEVICE DEVICEID=${deviceId} PRODUCT_NAME="Satellite Deck" KEYS_TOTAL=${keysTotal} KEYS_PER_ROW=${keysPerRow} BITMAPS=1 COLORS=0\n`
+				`ADD-DEVICE DEVICEID=${deviceId} PRODUCT_NAME="Satellite Deck" KEYS_TOTAL=${
+					props.keysTotal
+				} KEYS_PER_ROW=${props.keysPerRow} BITMAPS=${props.bitmaps ? 1 : 0} COLORS=${
+					props.colours ? 1 : 0
+				} TEXT=${props.text ? 1 : 0}\n`
 			)
 		}
 	}
