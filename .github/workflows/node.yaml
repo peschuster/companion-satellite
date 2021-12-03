@@ -1,6 +1,10 @@
 name: Build/release
 
-on: push
+on: 
+  push:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   release:
@@ -35,3 +39,8 @@ jobs:
           # If the commit is tagged with a version (e.g. "v1.0.0"),
           # release the app after building
           release: ${{ startsWith(github.ref, 'refs/tags/v') }}
+                          
+      - uses: actions/upload-artifact@v2
+        with:
+          name: companion-satellite
+          path: dist/
